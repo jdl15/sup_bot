@@ -1,58 +1,91 @@
 import hashlib
 import json
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Load API key from .env
-load_dotenv()
-# api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI()
-vector_store_id = os.getenv("VECTOR_STORE_ID")
-mapping_file = "file_mapping.json"
 
-# Load previous mapping
-if os.path.exists(mapping_file):
-    with open(mapping_file, "r") as f:
-        file_mapping = json.load(f)  # convert
-else:
-    file_mapping = {}
+class Uploader:
+    def __init__(
+        self,
+        support_dir="support",
+        mapping_file="file_mapping.json",
+        url_mapping_file="url_mapping.json",
+    ):
+        load_dotenv()
+        self.client = OpenAI()
+        self.vector_store_id = os.getenv("VECTOR_STORE_ID")
+        self.support_dir = Path(support_dir)
+        self.mapping_file = Path(mapping_file)
+        self.url_mapping_file = Path(url_mapping_file)
 
-for file_name in os.listdir("support/"):
-    if not file_name.endswith(".md"):
-        continue
-    file_path = os.path.join("support/", file_name)
+        # Load previous mappings
+        if os.path.exists(self.mapping_file):
+            with open(self.mapping_file, "r", encoding="utf-8") as f:
+                self.file_mapping = json.load(f)
+        else:
+            self.file_mapping = {}
+        if os.path.exists(self.url_mapping_file):
+            with open(self.url_mapping_file, "r", encoding="utf-8") as f:
+                self.url_mapping = json.load(f)
+        else:
+            self.url_mapping = {}
 
-    # Compute hash
-    with open(file_path, "rb") as f:
-        content = f.read()
-        file_hash = hashlib.md5(content).hexdigest()
+    def compute_hash(self, file_path):
+        with open(file_path, "rb") as f:
+            content = f.read()
+            return hashlib.md5(content).hexdigest()
 
-    # file name already exist in mapping
-    if file_name in file_mapping:
-        exist_file = file_mapping[file_name]
-        # file doesn't change
-        if exist_file["hash"] == file_hash:
-            continue
-        # file change, delete from vector store and general storage
-        client.vector_stores.files.delete(
-            vector_store_id=vector_store_id, file_id=exist_file["file_id"]
+    def upload_file(self, file_path):
+        file_name = file_path.name
+        file_hash = self.compute_hash(file_path)
+
+        # Check for existing file
+        if file_name in self.file_mapping:
+            exist_file = self.file_mapping[file_name]
+            if exist_file["hash"] == file_hash:
+                return
+            # delete previous version
+            self.client.vector_stores.files.delete(
+                vector_store_id=self.vector_store_id, file_id=exist_file["file_id"]
+            )
+            self.client.files.delete(exist_file["file_id"])
+
+        # Upload file
+        with open(file_path, "rb") as f:
+            uploaded_file = self.client.files.create(file=f, purpose="assistants")
+            file_id = uploaded_file.id
+
+        # Attach to vector store
+        self.client.vector_stores.files.create(
+            vector_store_id=self.vector_store_id,
+            file_id=file_id,
+            attributes={"Article URL": self.url_mapping.get(file_name)},
         )
-        client.files.delete(exist_file["file_id"])
+        print(self.url_mapping.get(file_name))
 
-    # Upload
-    with open(file_path, "rb") as f:
-        uploaded_file = client.files.create(file=f, purpose="assistants")
-        file_id = uploaded_file.id
+        # Update mapping
+        self.file_mapping[file_name] = {"hash": file_hash, "file_id": file_id}
 
-    # Attach to vector store
-    vs_file = client.vector_stores.files.create(
-        vector_store_id=vector_store_id, file_id=file_id
-    )
+    def run(self):
+        for file_path in self.support_dir.glob("*.md"):
+            self.upload_file(file_path)
+        # save mapping
+        with open(self.mapping_file, "w", encoding="utf-8") as f:
+            json.dump(self.file_mapping, f, indent=2)
 
-    # Update mapping
-    file_mapping[file_name] = {"hash": file_hash, "file_id": file_id}
 
-with open(mapping_file, "w") as f:
-    json.dump(file_mapping, f, indent=2)
+if __name__ == "__main__":
+    Uploader().run()
+    # from openai import OpenAI
+
+    # load_dotenv()
+    # client = OpenAI()
+
+    # vector_store_file = client.vector_stores.files.retrieve(
+    #     vector_store_id="vs_68a7e955c5b48191a0bc778ceca98e61",
+    #     file_id="file-RMqSzMRs33pxa5efFF8Xr9",
+    # )
+    # print(vector_store_file)
