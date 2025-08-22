@@ -31,7 +31,7 @@ class Scraper:
 
     # fetch article from the API
     def get_articles(self) -> list[dict]:
-        response = requests.request("GET", self.url, params={"per_page": 5})
+        response = requests.request("GET", self.url, params={"per_page": 6})
         if response.status_code == 200:
             data = response.json()
             return data["articles"]
