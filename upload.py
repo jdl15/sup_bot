@@ -107,15 +107,15 @@ class Uploader:
             json.dump(log, f, indent=2)
 
 
-if __name__ == "__main__":
-    Uploader().run()
-    # from openai import OpenAI
+# if __name__ == "__main__":
+#     Uploader().run()
+# from openai import OpenAI
 
-    # load_dotenv()
-    # client = OpenAI()
+# load_dotenv()
+# client = OpenAI()
 
-    # vector_store_file = client.vector_stores.files.retrieve(
-    #     vector_store_id="vs_68a7e955c5b48191a0bc778ceca98e61",
-    #     file_id="file-RMqSzMRs33pxa5efFF8Xr9",
-    # )
-    # print(vector_store_file)
+# vector_store_file = client.vector_stores.files.retrieve(
+#     vector_store_id="vs_68a7e955c5b48191a0bc778ceca98e61",
+#     file_id="file-RMqSzMRs33pxa5efFF8Xr9",
+# )
+# print(vector_store_file)

@@ -31,7 +31,7 @@ class Scraper:
 
     # fetch article from the API
     def get_articles(self) -> list[dict]:
-        response = requests.request("GET", self.url, params={"per_page": 6})
+        response = requests.request("GET", self.url, params={"per_page": 5})
         if response.status_code == 200:
             data = response.json()
             return data["articles"]
@@ -59,7 +59,7 @@ class Scraper:
             self.save_article(article)
 
 
-if __name__ == "__main__":
-    # https://support.optisigns.com/hc/en-us
-    url = "https://support.optisigns.com/api/v2/help_center/en-us/articles"
-    Scraper(url).run()
+# if __name__ == "__main__":
+#     # https://support.optisigns.com/hc/en-us
+#     url = "https://support.optisigns.com/api/v2/help_center/en-us/articles"
+#     Scraper(url).run()
