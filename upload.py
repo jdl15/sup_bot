@@ -73,7 +73,7 @@ class Uploader:
         self.client.vector_stores.files.create(
             vector_store_id=self.vector_store_id,
             file_id=file_id,
-            attributes={"Article URL": self.url_mapping.get(file_name)},
+            attributes={"url": self.url_mapping.get(file_name)},
         )
 
         # Update mapping
@@ -105,17 +105,3 @@ class Uploader:
         }
         with open(log_file, "w", encoding="utf-8") as f:
             json.dump(log, f, indent=2)
-
-
-# if __name__ == "__main__":
-#     Uploader().run()
-# from openai import OpenAI
-
-# load_dotenv()
-# client = OpenAI()
-
-# vector_store_file = client.vector_stores.files.retrieve(
-#     vector_store_id="vs_68a7e955c5b48191a0bc778ceca98e61",
-#     file_id="file-RMqSzMRs33pxa5efFF8Xr9",
-# )
-# print(vector_store_file)
