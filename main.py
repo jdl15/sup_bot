@@ -1,3 +1,7 @@
+import time
+
+import schedule
+
 from scrape import Scraper
 from upload import Uploader
 
@@ -13,5 +17,9 @@ def main():
     print("Upload complete.")
 
 
+schedule.every(5).minutes.do(main)
+
 if __name__ == "__main__":
-    main()
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
