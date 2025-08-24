@@ -1,2 +1,0 @@
-# run main.py every night at 2 AM
-0 2 * * * python /app/main.py >> /app/log.txt 2>&1
