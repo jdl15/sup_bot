@@ -1,3 +1,4 @@
+import os
 import re
 
 import requests
@@ -15,11 +16,28 @@ class Scraper:
 
     # fetch article from the API
     def get_articles(self) -> list[dict]:
-        response = requests.request("GET", self.url, params={"per_page": 30})
-        if response.status_code == 200:
+        total_article = 31
+        articles = []
+        while self.url and len(articles) < total_article:
+            response = requests.request("GET", self.url)
+            if response.status_code != 200:
+                print("Error fetching articles.")
+                break
             data = response.json()
-            return data["articles"]
-        return []
+            new_articles = data.get("articles", [])
+            articles.extend(new_articles)
+            if len(articles) >= total_article:
+                break
+            self.url = data.get("next_page")
+        return articles[:total_article]
+
+        # response = requests.request("GET", self.url, params={"per_page": 2})
+        # if response.status_code == 200:
+        #     data = response.json()
+        #     # print(self.url, data["next_page"])
+        #     print(data["articles"])
+        #     return data["articles"]
+        # return []
 
     def clean_html(self, html: str) -> str:
         soup = BeautifulSoup(html, "html.parser")
