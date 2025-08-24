@@ -1,15 +1,5 @@
 # sup_bot
 
-This is a customer-support assistant:
-
-- Scraping support articles using Zendesk API and converting them into clean Markdown.
-
-- Uploading the articles to OpenAI Vector Store, where the content is automatically split into manageable. User can create an OpenAI Assistant that answers user questions using only the uploaded documentation.
-
-- Automating daily updates: the scraper runs daily in digital ocean, detecting new or updated articles and uploading only the changes. Log added, updated, and skipped articles.
-  <br>
-  This application ensures that OptiBot always has access to the latest support content, providing accurate, concise, and cited answers to customer questions without requiring manual updates.
-
 ### Getting Start
 
 ##### Setup
@@ -35,3 +25,13 @@ git clone git@github.com:jdl15/sup_bot.git
 If you don't want to run using Docker, download the requirements in requirements.txt by `pip install -r requirements.txt` and run `python main.py` in your virtual environment.
 <br>
 To run with docker, build: `docker build -t main.py:latest .` and run `docker run --env-file .env main.py`.
+
+### About the Application
+
+- Scraping support articles using Zendesk API and converting them into clean Markdown.
+
+- Uploading the articles to OpenAI Vector Store, where the content is automatically split into manageable. The application use the vector store default chunking strategy which the token size is 800 for each chunk and overlap 400 tokens. User can create an OpenAI Assistant that answers user questions using only the uploaded documentation.
+
+- Automating daily updates: the scraper runs daily in digital ocean, detecting new or updated articles and uploading only the changes. Log added, updated, and skipped articles. Access the Log using [Open Search Dashboard](db-opensearch-nyc3-68715-do-user-24863894-0.j.db.ondigitalocean.com)
+  <br>
+  This application ensures that OptiBot always has access to the latest support content, providing accurate, concise, and cited answers to customer questions without requiring manual updates. Here is some of the example output:
