@@ -1,0 +1,23 @@
+name: Trigger DigitalOcean Deploy
+
+on:
+  schedule:
+    # Every 10 minutes
+    - cron: "*/5 * * * *"
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Make an empty commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git commit --allow-empty -m "Trigger DigitalOcean deploy"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
