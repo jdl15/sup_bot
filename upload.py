@@ -2,11 +2,10 @@ import datetime
 import hashlib
 import io
 import os
-import tempfile
 
 import tiktoken
 from dotenv import load_dotenv
-from openai import OpenAI, uploads
+from openai import OpenAI
 
 
 class Uploader:
