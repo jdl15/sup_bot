@@ -16,8 +16,10 @@ class Scraper:
 
     # fetch article from the API
     def get_articles(self) -> list[dict]:
-        total_article = 31
+        # set total number of articles want to fetch---------------------------------------------------
+        total_article = 50
         articles = []
+        # fetch the articles until reaching the total count or exit if there's error or no more articles
         while self.url and len(articles) < total_article:
             response = requests.request("GET", self.url)
             if response.status_code != 200:
@@ -31,16 +33,9 @@ class Scraper:
             self.url = data.get("next_page")
         return articles[:total_article]
 
-        # response = requests.request("GET", self.url, params={"per_page": 2})
-        # if response.status_code == 200:
-        #     data = response.json()
-        #     # print(self.url, data["next_page"])
-        #     print(data["articles"])
-        #     return data["articles"]
-        # return []
-
     def clean_html(self, html: str) -> str:
         soup = BeautifulSoup(html, "html.parser")
+        # handle internal link, tags and comments
         for ul in soup.find_all("ul"):
             if all(
                 li.find("a", href=True) and li.find("a")["href"].startswith("#")
@@ -54,7 +49,7 @@ class Scraper:
         return str(soup)
 
     # convert the body to md using markdownify library
-    def process_article(self, article: dict) -> None:
+    def process_article(self, article: dict) -> dict:
         html = self.clean_html(article["body"])
         markdown = md(html, heading_style="ATX")
         title = article["title"]
@@ -66,7 +61,7 @@ class Scraper:
             "url": article["html_url"],
         }
 
-    def run(self) -> None:
+    def run(self) -> list[dict]:
         articles = self.get_articles()
         processed_articles = []
         for article in articles:

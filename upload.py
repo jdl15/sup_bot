@@ -17,20 +17,16 @@ class Uploader:
         self.updated_count = 0
         self.skipped_count = 0
 
-    # def compute_hash(self, file_path):
+    # compute unique hash for file content
     def compute_hash(self, content: bytes) -> str:
         return hashlib.md5(content).hexdigest()
 
-    def get_existing_files(self):
+    # return existing files in the vector store and obtain their file_id and hash for comparison
+    def get_existing_files(self) -> dict[str, dict[str, str]]:
         files = self.client.vector_stores.files.list(
             vector_store_id=self.vector_store_id
         )
         existing_files_mapping = {}
-        # for file in files.data:
-        #     hash = file.attributes.get("hash")
-        #     file_name = file.attributes.get("file_name")
-        #     if hash and file_name:
-        #         existing_files_mapping[file_name] = {"file_id": file.id, "hash": hash}
         while True:
             for file in files.data:
                 hash = file.attributes.get("hash")
@@ -49,13 +45,14 @@ class Uploader:
 
         return existing_files_mapping
 
+    # estimation of chunk count for each file
     def count_chunks(
         self,
         text,
         chunk_size=int(800),
         overlap=int(400),
         model="text-embedding-3-small",
-    ):
+    ) -> int:
         enc = tiktoken.encoding_for_model(model)
         tokens = enc.encode(text)
         total_tokens = len(tokens)
@@ -78,17 +75,17 @@ class Uploader:
 
         # Check for existing file
         if file_name in existing_files:
-            # print("file name:", file_name)
+            # if file exists and their hash is the same, skip upload
             exist_file = existing_files[file_name]
             if exist_file["hash"] == file_hash:
                 self.skipped_count += 1
                 return
+            # If file exists but hash is different, delete the old file
             delete = self.client.vector_stores.files.delete(
                 vector_store_id=self.vector_store_id, file_id=exist_file["file_id"]
             )
             self.client.files.delete(exist_file["file_id"])
             self.updated_count += 1
-            print("file delete:", delete)
         else:
             self.added_count += 1
 
@@ -97,7 +94,6 @@ class Uploader:
         file_obj.name = file_name
         uploaded_file = self.client.files.create(file=file_obj, purpose="assistants")
         file_id = uploaded_file.id
-
         # Attach to vector store
         self.client.vector_stores.files.create(
             vector_store_id=self.vector_store_id,
