@@ -6,6 +6,7 @@ RUN apk add --no-cache curl bash ca-certificates \
 
 # Copy your Python code
 COPY main.py /app/main.py
+COPY requirements.txt /app/requirements.txt
 WORKDIR /app
 
 # Copy crontab
