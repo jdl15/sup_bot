@@ -51,7 +51,7 @@ class Uploader:
         text,
         chunk_size=int(800),
         overlap=int(400),
-        model="text-embedding-3-small",
+        model="text-embedding-3-large",
     ) -> int:
         enc = tiktoken.encoding_for_model(model)
         tokens = enc.encode(text)
