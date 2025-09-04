@@ -51,7 +51,7 @@ To run with docker, build: `docker build -t main.py:latest .` and run `docker ru
     return articles
   ```
 
-- Uploading the articles to OpenAI Vector Store, where the content is automatically split into manageable. The application use the following chunking strategy: the token size is 700 for each chunk and overlap 300 tokens. User can create an OpenAI Assistant that answers user questions using only the uploaded documentation.
+- Uploading the prechunk articles to OpenAI Vector Store. The application use the following chunking strategy: the token size is 700 for each chunk and overlap 300 tokens. User can create an OpenAI Assistant that answers user questions using only the uploaded documentation.
 
 - Automating daily updates: the scraper runs daily in digital ocean, detecting new or updated articles and uploading only the changes. Log added, updated, and skipped articles. You can access the log data through [OpenSearch](db-opensearch-nyc3-68715-do-user-24863894-0.j.db.ondigitalocean.com).
   <br>
