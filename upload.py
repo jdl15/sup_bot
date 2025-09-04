@@ -1,4 +1,3 @@
-import datetime
 import hashlib
 import io
 import os
@@ -9,13 +8,19 @@ from openai import OpenAI
 
 
 class Uploader:
-    def __init__(self):
+
+    def __init__(self, chunk_size=700, overlap=300, model="text-embedding-3-large"):
         load_dotenv()
         self.client = OpenAI()
         self.vector_store_id = os.getenv("VECTOR_STORE_ID")
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+        self.model = model
         self.added_count = 0
         self.updated_count = 0
         self.skipped_count = 0
+        self.file_status = False
+        self.files = 0
 
     # compute unique hash for file content
     def compute_hash(self, content: bytes) -> str:
@@ -45,74 +50,82 @@ class Uploader:
 
         return existing_files_mapping
 
-    # estimation of chunk count for each file
-    def count_chunks(
-        self,
-        text,
-        chunk_size=int(800),
-        overlap=int(400),
-        model="text-embedding-3-large",
-    ) -> int:
-        enc = tiktoken.encoding_for_model(model)
+    # chunk the article
+    def chunk_text(self, text: str) -> list[str]:
+        enc = tiktoken.encoding_for_model(self.model)
         tokens = enc.encode(text)
-        total_tokens = len(tokens)
-        chunk_count = 0
+        chunks = []
         start = 0
-        while start < total_tokens:
-            end = min(start + chunk_size, total_tokens)
-            chunk_count += 1
-            if end == total_tokens:
+        while start < len(tokens):
+            end = min(start + self.chunk_size, len(tokens))
+            chunk_tokens = tokens[start:end]
+            chunk_text = enc.decode(chunk_tokens)
+            chunks.append(chunk_text)
+            if end == len(tokens):
                 break
-            start += chunk_size - overlap
+            start += self.chunk_size - self.overlap
+        return chunks
 
-        return chunk_count
+    # Prepend URL to each chunk
+    def attach_url_to_chunks(self, chunks: list[str], url: str) -> list[str]:
+        return [f"Article URL: {url}\n\n{chunk}" for chunk in chunks]
 
-    def upload_file(self, article: dict, existing_files):
-        chunk = self.count_chunks(article["markdown"])
-        file_name = f"{article['slug']}.md"
-        file_content = article["markdown"].encode("utf-8")
-        file_hash = self.compute_hash(file_content)
+    # handle the upload for each chunk
+    def upload_chunk(
+        self,
+        chunk_text: str,
+        chunk_name: str,
+        existing_files: dict,
+    ):
+        chunk_bytes = chunk_text.encode("utf-8")
+        chunk_hash = self.compute_hash(chunk_bytes)
 
-        # Check for existing file
-        if file_name in existing_files:
-            # if file exists and their hash is the same, skip upload
-            exist_file = existing_files[file_name]
-            if exist_file["hash"] == file_hash:
+        if chunk_name in existing_files:
+            existing = existing_files[chunk_name]
+            if existing["hash"] == chunk_hash:
                 self.skipped_count += 1
                 return
-            # If file exists but hash is different, delete the old file
-            delete = self.client.vector_stores.files.delete(
-                vector_store_id=self.vector_store_id, file_id=exist_file["file_id"]
+            # Delete old chunk
+            self.client.vector_stores.files.delete(
+                vector_store_id=self.vector_store_id, file_id=existing["file_id"]
             )
-            self.client.files.delete(exist_file["file_id"])
+            self.client.files.delete(existing["file_id"])
             self.updated_count += 1
+            self.file_status = True
         else:
             self.added_count += 1
+            self.file_status = True
 
-        # Upload file
-        file_obj = io.BytesIO(file_content)
-        file_obj.name = file_name
+        file_obj = io.BytesIO(chunk_bytes)
+        file_obj.name = chunk_name
         uploaded_file = self.client.files.create(file=file_obj, purpose="assistants")
-        file_id = uploaded_file.id
-        # Attach to vector store
         self.client.vector_stores.files.create(
             vector_store_id=self.vector_store_id,
-            file_id=file_id,
+            file_id=uploaded_file.id,
             attributes={
-                "hash": file_hash,
-                "file_name": file_name,
-                "url": article["url"],
+                "hash": chunk_hash,
+                "file_name": chunk_name,
             },
         )
-        existing_files[file_name] = {"file_id": file_id, "hash": file_hash}
-        print(f"{file_name} is uploaded and the estimate chunk is {chunk}")
+        existing_files[chunk_name] = {"file_id": uploaded_file.id, "hash": chunk_hash}
+
+    # process the article
+    def upload_article(self, article: dict, existing_files: dict):
+        chunks = self.chunk_text(article["markdown"])
+        chunks = self.attach_url_to_chunks(chunks, article["url"])
+        print(len(chunks), "chunks found for", article["slug"])
+        for i, chunk in enumerate(chunks):
+            chunk_name = f"{article['slug']}_chunk{i+1}.md"
+            self.upload_chunk(chunk, chunk_name, existing_files)
+        if self.file_status:
+            self.files += 1
+            self.file_status = False
 
     def run(self, articles: list[dict]):
         existing_files = self.get_existing_files()
-        print(len(existing_files), "existing files found")
-        print("timestamp:", datetime.datetime.now())
+        print(len(existing_files), "existing chunks found in vector store.")
         for article in articles:
-            self.upload_file(article, existing_files)
+            self.upload_article(article, existing_files)
         print(
-            f"Added: {self.added_count}, Updated: {self.updated_count}, Skipped: {self.skipped_count}"
+            f"Files Added or Updated: {self.files}, Chunks Added: {self.added_count}, Chunks Updated: {self.updated_count}, Chunks Skipped: {self.skipped_count}"
         )

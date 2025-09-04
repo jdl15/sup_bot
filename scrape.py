@@ -17,7 +17,7 @@ class Scraper:
     # fetch article from the API
     def get_articles(self) -> list[dict]:
         # set total number of articles want to fetch---------------------------------------------------
-        total_article = 50
+        total_article = 40
         articles = []
         # fetch the articles until reaching the total count or exit if there's error or no more articles
         while self.url and len(articles) < total_article:
