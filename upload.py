@@ -114,12 +114,28 @@ class Uploader:
         chunks = self.chunk_text(article["markdown"])
         chunks = self.attach_url_to_chunks(chunks, article["url"])
         print(len(chunks), "chunks found for", article["slug"])
+        new_chunk_names = []
         for i, chunk in enumerate(chunks):
             chunk_name = f"{article['slug']}_chunk{i+1}.md"
+            new_chunk_names.append(chunk_name)
             self.upload_chunk(chunk, chunk_name, existing_files)
         if self.file_status:
             self.files += 1
             self.file_status = False
+        # handle the case if the new article shrinks
+        old_chunks = []
+        for name in existing_files.keys():
+            if name.startswith(article["slug"]):
+                old_chunks.append(name)
+        for old_chunk in old_chunks:
+            if old_chunk not in new_chunk_names:
+                file_id = existing_files[old_chunk]["file_id"]
+                self.client.vector_stores.files.delete(
+                    vector_store_id=self.vector_store_id, file_id=file_id
+                )
+                self.client.files.delete(file_id)
+                del existing_files[old_chunk]
+                print(f"Deleted stale chunk: {old_chunk}")
 
     def run(self, articles: list[dict]):
         existing_files = self.get_existing_files()
